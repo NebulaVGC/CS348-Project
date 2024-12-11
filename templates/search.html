@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pokemon Search</title>
+  <style>
+    body, html {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+    }
+
+    .form-container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      width: 300px;
+    }
+
+    .title {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 1.8em;
+      color: #333;
+    }
+
+    .form-row {
+      margin-bottom: 10px;
+    }
+
+    input[type="text"], input[type="number"], select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    input[readonly] {
+      background-color: #e9ecef;
+      cursor: not-allowed;
+    }
+
+    button {
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    .error-message {
+      color: red;
+      margin-bottom: 10px;
+    }
+
+    .dropdown-container {
+      position: relative;
+      width: 100%;
+    }
+
+    .dropdown-list {
+      position: absolute;
+      top: 40px;
+      left: 0;
+      width: 100%;
+      max-height: 150px;
+      overflow-y: auto;
+      background-color: #fff;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      display: none;
+      z-index: 10;
+    }
+
+    .dropdown-list div {
+      padding: 8px;
+      cursor: pointer;
+    }
+
+    .dropdown-list div:hover {
+      background-color: #f0f0f0;
+    }
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <div class="title">Pokemon Search</div>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="error-message">
+          {{ messages[0] }}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <div class="dropdown-container">
+      <input type="text" id="dropdown-input" placeholder="Type Pokemon name..." oninput="filterResults()" />
+      <div class="dropdown-list" id="dropdown-list"></div>
+    </div>
+    
+    <button onclick="submitSearch()">Search</button>
+    <button onclick="history.back()">Back</button>
+    <form id="pokemon-form">
+      <input type="hidden" id="original-species" name="original_species" />
+      <input type="hidden" id="original-dexID" name="original_dexID" />
+      <div class="stats-container" id="stats-container" style="display: none; margin-top: 20px;">
+        <div class="form-row">
+          <label for="species">Name:</label>
+          <input type="text" id="species" name="species" placeholder="Species" readonly />
+        </div>
+
+        <div class="form-row">
+          <label for="dexID">Dex Number:</label>
+          <input type="text" id="dexID" name="dexID" placeholder="Dex Number" readonly />
+        </div>
+
+        <div class="form-row">
+          <label for="type1">Type 1:</label>
+          <input type="text" id="type1" name="type1" placeholder="Type 1" readonly />
+        </div>
+
+        <div class="form-row">
+          <label for="type2">Type 2:</label>
+          <input type="text" id="type2" name="type2" placeholder="Type 2" readonly />
+        </div>
+
+        <div class="form-row">
+          <label for="hp">HP:</label>
+          <input type="number" id="hp" name="hp" placeholder="HP" readonly />
+        </div>
+
+        <div class="form-row">
+          <label for="attack">Attack:</label>
+          <input type="number" id="attack" name="attack" placeholder="Attack" readonly />
+        </div>
+
+        <div class="form-row">
+          <label for="defense">Defense:</label>
+          <input type="number" id="defense" name="defense" placeholder="Defense" readonly />
+        </div>
+
+        <div class="form-row">
+          <label for="spatk">Special Attack:</label>
+          <input type="number" id="spatk" name="spatk" placeholder="Special Attack" readonly />
+        </div>
+
+        <div class="form-row">
+          <label for="spdef">Special Defense:</label>
+          <input type="number" id="spdef" name="spdef" placeholder="Special Defense" readonly />
+        </div>
+
+        <div class="form-row">
+          <label for="speed">Speed:</label>
+          <input type="number" id="speed" name="speed" placeholder="Speed" readonly />
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const dropdownList = document.getElementById("dropdown-list");
+    const input = document.getElementById("dropdown-input");
+    const statsContainer = document.getElementById("stats-container");
+    let items = [];
+
+    async function fetchItems() {
+      try {
+        const response = await fetch('/api/items');
+        items = await response.json();
+      } catch (error) {
+        console.error('Error fetching items:', error);
+      }
+    }
+
+    window.onload = fetchItems;
+
+    function filterResults() {
+      const filter = input.value.toLowerCase();
+      dropdownList.innerHTML = '';
+      const filteredItems = items.filter(item => item.name.toLowerCase().includes(filter));
+      
+      if (filteredItems.length > 0) {
+        dropdownList.style.display = 'block';
+        filteredItems.forEach(item => {
+          const div = document.createElement('div');
+          div.textContent = item.name;
+          div.onclick = () => selectItem(item);
+          dropdownList.appendChild(div);
+        });
+      } else {
+        dropdownList.style.display = 'none';
+      }
+    }
+
+    function selectItem(item) {
+      input.value = item.name;
+      document.getElementById("original-species").value = item.name;
+      document.getElementById("original-dexID").value = item.dexID;
+      dropdownList.style.display = 'none';
+    }
+
+    async function submitSearch() {
+      const searchValue = input.value;
+      if (!searchValue) return;
+
+      try {
+        const response = await fetch(`/api/item-details?name=${encodeURIComponent(searchValue)}`);
+        const data = await response.json();
+        
+        document.getElementById("species").value = data.species;
+        document.getElementById("dexID").value = data.dexID;
+        document.getElementById("type1").value = data.type1;
+        document.getElementById("type2").value = data.type2;
+        document.getElementById("hp").value = data.hp;
+        document.getElementById("attack").value = data.attack;
+        document.getElementById("defense").value = data.defense;
+        document.getElementById("spatk").value = data.spatk;
+        document.getElementById("spdef").value = data.spdef;
+        document.getElementById("speed").value = data.speed;
+
+        statsContainer.style.display = 'block';
+      } catch (error) {
+        console.error('Error fetching Pokémon details:', error);
+      }
+    }
+  </script>
+</body>
+</html>
